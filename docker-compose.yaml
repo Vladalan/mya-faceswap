@@ -2,7 +2,7 @@ name: mya-faceswap
 services:
   # Interfaz simple en español (FastAPI) — llama al CLI de FaceFusion
   mya-faceswap:
-    image: mya/faceswap:3.9.1-cuda
+    image: ghcr.io/vladalan/mya-faceswap:3.9.1-cuda
     container_name: mya-faceswap
     working_dir: /app
     command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080"]
@@ -31,7 +31,7 @@ services:
 
   # FaceFusion oficial completo (UI Gradio) — modo avanzado
   facefusion:
-    image: mya/faceswap:3.9.1-cuda
+    image: ghcr.io/vladalan/mya-faceswap:3.9.1-cuda
     container_name: mya-facefusion
     command: ["python", "facefusion.py", "run", "--execution-providers", "cuda"]
     ports:
@@ -77,9 +77,9 @@ x-casaos:
   tips:
     before_install:
       en_us: |
-        Requires an NVIDIA GPU with drivers enabled in ZimaOS, and the image `mya/faceswap:3.9.1-cuda` built beforehand.
+        Requires an NVIDIA GPU with drivers enabled in ZimaOS; the image is pulled from ghcr.io/vladalan/mya-faceswap (~10 GB).
       es_es: |
-        Requiere **GPU NVIDIA con drivers activos en ZimaOS** y haber construido antes la imagen `mya/faceswap:3.9.1-cuda` (ver `build.sh`).
+        Requiere **GPU NVIDIA con drivers activos en ZimaOS**. La imagen se descarga de ghcr.io/vladalan/mya-faceswap (~10 GB, tarda la primera vez).
         - Interfaz simple: puerto **8095**
         - FaceFusion avanzado: puerto **7870**
         - Resultados en `/DATA/Media/FaceSwap/`
