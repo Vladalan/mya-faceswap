@@ -7,7 +7,7 @@ echo "== Verificando GPU NVIDIA =="
 nvidia-smi || { echo "ERROR: nvidia-smi no responde. Activa los drivers NVIDIA en ZimaOS (Ajustes > GPU)."; exit 1; }
 
 echo "== Construyendo imagen (tarda 10-20 min la primera vez) =="
-docker build -t mya/faceswap:3.9.1-cuda .
+docker build -t ghcr.io/vladalan/mya-faceswap:3.9.1-cuda .
 
 mkdir -p /DATA/AppData/mya-faceswap/assets /DATA/AppData/mya-faceswap/caches \
          /DATA/AppData/mya-faceswap/jobs /DATA/AppData/mya-faceswap/data /DATA/Media/FaceSwap
