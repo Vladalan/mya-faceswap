@@ -1,0 +1,88 @@
+name: mya-faceswap
+services:
+  # Interfaz simple en español (FastAPI) — llama al CLI de FaceFusion
+  mya-faceswap:
+    image: mya/faceswap:3.9.1-cuda
+    container_name: mya-faceswap
+    working_dir: /app
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080"]
+    ports:
+      - target: 8080
+        published: ${WEBUI_PORT:-8095}
+        protocol: tcp
+    volumes:
+      - /DATA/AppData/mya-faceswap/assets:/facefusion/.assets
+      - /DATA/AppData/mya-faceswap/caches:/facefusion/.caches
+      - /DATA/AppData/mya-faceswap/data:/data
+      - /DATA/Media/FaceSwap:/output
+    environment:
+      - TZ=America/Monterrey
+      - EXECUTION_PROVIDER=cuda
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility,video
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    restart: unless-stopped
+
+  # FaceFusion oficial completo (UI Gradio) — modo avanzado
+  facefusion:
+    image: mya/faceswap:3.9.1-cuda
+    container_name: mya-facefusion
+    command: ["python", "facefusion.py", "run", "--execution-providers", "cuda"]
+    ports:
+      - target: 7860
+        published: ${FF_PORT:-7870}
+        protocol: tcp
+    volumes:
+      - /DATA/AppData/mya-faceswap/assets:/facefusion/.assets
+      - /DATA/AppData/mya-faceswap/caches:/facefusion/.caches
+      - /DATA/AppData/mya-faceswap/jobs:/facefusion/.jobs
+      - /DATA/Media/FaceSwap:/output
+    environment:
+      - TZ=America/Monterrey
+      - GRADIO_SERVER_NAME=0.0.0.0
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility,video
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    restart: unless-stopped
+
+x-casaos:
+  architectures:
+    - amd64
+  main: mya-faceswap
+  author: MYA Despacho Contable
+  category: Media
+  description:
+    en_us: Face swap with FaceFusion on NVIDIA GPU. Simple Spanish web UI plus the full FaceFusion UI.
+    es_es: Intercambio de rostros con FaceFusion acelerado por GPU NVIDIA. Interfaz simple en español + FaceFusion completo (modo avanzado).
+  developer: Alan Mojarro — MYA Despacho Contable
+  icon: https://cdn.jsdelivr.net/gh/walkxcode/dashboard-icons@main/png/photoprism.png
+  tagline:
+    en_us: Face swap for photos and videos (GPU)
+    es_es: Cambia rostros en fotos y videos (GPU)
+  title:
+    en_us: MYA FaceSwap
+    es_es: MYA FaceSwap
+  tips:
+    before_install:
+      en_us: |
+        Requires an NVIDIA GPU with drivers enabled in ZimaOS, and the image `mya/faceswap:3.9.1-cuda` built beforehand.
+      es_es: |
+        Requiere **GPU NVIDIA con drivers activos en ZimaOS** y haber construido antes la imagen `mya/faceswap:3.9.1-cuda` (ver `build.sh`).
+        - Interfaz simple: puerto **8095**
+        - FaceFusion avanzado: puerto **7870**
+        - Resultados en `/DATA/Media/FaceSwap/`
+        - Modelos (~varios GB, se descargan la primera vez) en `/DATA/AppData/mya-faceswap/assets/`
+  index: /
+  port_map: ${WEBUI_PORT:-8095}

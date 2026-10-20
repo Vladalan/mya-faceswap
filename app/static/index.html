@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MYA FaceSwap</title>
+  <script src="https://cdn.tailwindcss.com/3.4.16"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen" x-data="app()" x-init="init()">
+<div class="max-w-5xl mx-auto p-4 sm:p-8 space-y-6">
+
+  <header class="flex flex-wrap items-center justify-between gap-3">
+    <div>
+      <h1 class="text-2xl font-bold">MYA FaceSwap</h1>
+      <p class="text-slate-400 text-sm">Intercambio de rostros con FaceFusion en tu ZimaOS</p>
+    </div>
+    <div class="text-xs text-right text-slate-400">
+      <div>GPU: <span class="text-slate-200" x-text="estado.gpu"></span></div>
+      <div>En cola: <span x-text="estado.en_cola"></span> ·
+        <a :href="`${location.protocol}//${location.hostname}:7870`" target="_blank" class="text-sky-400 underline">FaceFusion avanzado ↗</a></div>
+    </div>
+  </header>
+
+  <form @submit.prevent="enviar" class="bg-slate-900 rounded-xl p-5 space-y-5">
+    <div class="grid sm:grid-cols-2 gap-5">
+      <label class="block">
+        <span class="font-semibold">1. Rostro(s) fuente</span>
+        <span class="block text-xs text-slate-400 mb-2">Una o varias fotos claras de la misma persona</span>
+        <input type="file" accept="image/*" multiple @change="rostros = [...$event.target.files]; previewRostros()"
+               class="block w-full text-sm file:mr-3 file:rounded file:border-0 file:bg-sky-600 file:px-3 file:py-2 file:text-white">
+        <div class="flex gap-2 mt-2 flex-wrap">
+          <template x-for="src in prevRostros"><img :src="src" class="h-20 w-20 object-cover rounded"></template>
+        </div>
+      </label>
+      <label class="block">
+        <span class="font-semibold">2. Imagen o video objetivo</span>
+        <span class="block text-xs text-slate-400 mb-2">Donde se pondrá el rostro</span>
+        <input type="file" accept="image/*,video/*" @change="objetivo = $event.target.files[0]; previewObjetivo()"
+               class="block w-full text-sm file:mr-3 file:rounded file:border-0 file:bg-sky-600 file:px-3 file:py-2 file:text-white">
+        <template x-if="prevObjetivo && !esVideo"><img :src="prevObjetivo" class="mt-2 max-h-40 rounded"></template>
+        <template x-if="prevObjetivo && esVideo"><video :src="prevObjetivo" class="mt-2 max-h-40 rounded" muted controls></video></template>
+      </label>
+    </div>
+
+    <details class="bg-slate-800/50 rounded p-3">
+      <summary class="cursor-pointer font-semibold">Opciones</summary>
+      <div class="grid sm:grid-cols-2 gap-4 mt-3 text-sm">
+        <label>Modelo de intercambio
+          <select x-model="modelo" class="mt-1 w-full bg-slate-800 rounded p-2">
+            <option value="hyperswap_1a_256">HyperSwap 1a (recomendado)</option>
+            <option value="hyperswap_1b_256">HyperSwap 1b</option>
+            <option value="hyperswap_1c_256">HyperSwap 1c</option>
+            <option value="inswapper_128_fp16">InSwapper 128 fp16 (rápido)</option>
+            <option value="inswapper_128">InSwapper 128</option>
+            <option value="simswap_unofficial_512">SimSwap 512</option>
+            <option value="simswap_256">SimSwap 256</option>
+            <option value="ghost_2_256">Ghost 2</option>
+            <option value="blendswap_256">BlendSwap</option>
+            <option value="uniface_256">UniFace</option>
+          </select>
+        </label>
+        <label>Mejora de rostro
+          <select x-model="modelo_mejora" :disabled="!mejorar" class="mt-1 w-full bg-slate-800 rounded p-2 disabled:opacity-50">
+            <option value="gfpgan_1.4">GFPGAN 1.4</option>
+            <option value="codeformer">CodeFormer</option>
+            <option value="restoreformer_plus_plus">RestoreFormer++</option>
+            <option value="gpen_bfr_512">GPEN 512</option>
+          </select>
+        </label>
+        <label class="flex items-center gap-2"><input type="checkbox" x-model="mejorar"> Aplicar mejora de rostro (más nítido, más lento)</label>
+        <label class="flex items-center gap-2"><input type="checkbox" x-model="todas_caras"> Reemplazar todas las caras (si no, solo la principal)</label>
+        <label>Calidad de video: <span x-text="calidad"></span>
+          <input type="range" min="50" max="100" x-model="calidad" class="w-full">
+        </label>
+      </div>
+    </details>
+
+    <label class="flex items-start gap-2 text-sm text-amber-200">
+      <input type="checkbox" x-model="consentimiento" class="mt-1">
+      Confirmo que tengo el consentimiento de las personas cuyos rostros uso y que no usaré el resultado para engañar, difamar ni suplantar a nadie.
+    </label>
+
+    <div class="flex items-center gap-3">
+      <button :disabled="enviando || !rostros.length || !objetivo || !consentimiento"
+              class="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 rounded px-5 py-2 font-semibold">
+        <span x-text="enviando ? `Subiendo… ${progreso}%` : 'Procesar'"></span>
+      </button>
+      <span class="text-sm text-rose-400" x-text="error"></span>
+    </div>
+  </form>
+
+  <section class="space-y-3">
+    <h2 class="text-lg font-semibold">Trabajos</h2>
+    <p x-show="!jobs.length" class="text-slate-500 text-sm">Aún no hay trabajos.</p>
+    <template x-for="j in jobs" :key="j.id">
+      <div class="bg-slate-900 rounded-xl p-4 flex flex-col sm:flex-row gap-4">
+        <div class="sm:w-64 shrink-0">
+          <template x-if="j.estado === 'listo' && !esVid(j.salida)"><img :src="`/api/jobs/${j.id}/resultado`" class="rounded w-full"></template>
+          <template x-if="j.estado === 'listo' && esVid(j.salida)"><video :src="`/api/jobs/${j.id}/resultado`" class="rounded w-full" controls></video></template>
+          <div x-show="j.estado !== 'listo'" class="h-32 rounded bg-slate-800 grid place-items-center text-slate-400 text-sm"
+               x-text="{en_cola:'⏳ En cola', procesando:'⚙️ Procesando…', error:'❌ Error'}[j.estado]"></div>
+        </div>
+        <div class="flex-1 min-w-0 text-sm space-y-1">
+          <div class="font-mono text-xs text-slate-500" x-text="j.id"></div>
+          <div class="truncate">Objetivo: <span x-text="j.objetivo"></span></div>
+          <div>Creado: <span x-text="new Date(j.creado*1000).toLocaleString('es-MX')"></span></div>
+          <div x-show="j.terminado">Duración: <span x-text="Math.round(j.terminado - j.creado) + ' s'"></span></div>
+          <div class="flex gap-3 pt-2">
+            <a x-show="j.estado === 'listo'" :href="`/api/jobs/${j.id}/resultado?descargar=true`" class="text-sky-400 underline">Descargar</a>
+            <button x-show="j.estado === 'error'" @click="verLog(j.id)" class="text-amber-400 underline">Ver log</button>
+            <button x-show="j.estado !== 'procesando'" @click="borrar(j.id)" class="text-rose-400 underline">Borrar</button>
+          </div>
+          <pre x-show="logs[j.id]" x-text="logs[j.id]" class="mt-2 max-h-48 overflow-auto bg-black/50 p-2 rounded text-xs whitespace-pre-wrap"></pre>
+        </div>
+      </div>
+    </template>
+  </section>
+</div>
+
+<script>
+function app() {
+  return {
+    rostros: [], objetivo: null, prevRostros: [], prevObjetivo: null, esVideo: false,
+    modelo: 'hyperswap_1a_256', mejorar: true, modelo_mejora: 'gfpgan_1.4', todas_caras: false, calidad: 90,
+    consentimiento: false, enviando: false, progreso: 0, error: '',
+    jobs: [], logs: {}, estado: { gpu: '…', en_cola: 0 },
+
+    init() { this.refrescar(); setInterval(() => this.refrescar(), 3000); },
+    esVid(n) { return /\.(mp4|mov|mkv|avi|webm)$/i.test(n || ''); },
+    previewRostros() { this.prevRostros = this.rostros.map(f => URL.createObjectURL(f)); },
+    previewObjetivo() { this.esVideo = this.objetivo.type.startsWith('video'); this.prevObjetivo = URL.createObjectURL(this.objetivo); },
+
+    async refrescar() {
+      try {
+        this.jobs = await (await fetch('/api/jobs')).json();
+        this.estado = await (await fetch('/api/estado')).json();
+      } catch (e) {}
+    },
+
+    enviar() {
+      this.error = ''; this.enviando = true; this.progreso = 0;
+      const fd = new FormData();
+      this.rostros.forEach(f => fd.append('rostros', f));
+      fd.append('objetivo', this.objetivo);
+      for (const k of ['modelo', 'mejorar', 'modelo_mejora', 'todas_caras', 'calidad', 'consentimiento']) fd.append(k, this[k]);
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', '/api/swap');
+      xhr.upload.onprogress = e => { if (e.lengthComputable) this.progreso = Math.round(e.loaded / e.total * 100); };
+      xhr.onload = () => {
+        this.enviando = false;
+        if (xhr.status >= 400) { try { this.error = JSON.parse(xhr.responseText).detail; } catch { this.error = 'Error al enviar'; } }
+        this.refrescar();
+      };
+      xhr.onerror = () => { this.enviando = false; this.error = 'Error de conexión'; };
+      xhr.send(fd);
+    },
+
+    async verLog(id) { this.logs[id] = (await (await fetch(`/api/jobs/${id}`)).json()).log || '(sin log)'; },
+    async borrar(id) { if (confirm('¿Borrar este trabajo y su resultado?')) { await fetch(`/api/jobs/${id}`, { method: 'DELETE' }); this.refrescar(); } },
+  };
+}
+</script>
+</body>
+</html>
