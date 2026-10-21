@@ -13,15 +13,14 @@ Resultados: `/DATA/Media/FaceSwap/` · Modelos: `/DATA/AppData/mya-faceswap/asse
 - ZimaOS con GPU NVIDIA y drivers activos (`nvidia-smi` debe responder por SSH).
 - ~15 GB libres (imagen CUDA + modelos).
 
-## Instalación
-1. Copia la carpeta `mya-faceswap` al servidor (por ejemplo a `/DATA/AppData/mya-faceswap-src/` vía la app Archivos de ZimaOS o con `scp`).
-2. Por SSH:
-   ```bash
-   cd /DATA/AppData/mya-faceswap-src
-   sh build.sh
-   ```
-   `build.sh` verifica la GPU, construye la imagen `mya/faceswap:3.9.1-cuda`, crea las carpetas e instala la app.
-3. Alternativa por UI: tras construir la imagen, App Store → **+** → *Install a Custom App* → pega `docker-compose.yaml`.
+## Instalación (un solo comando)
+Entra por SSH a ZimaOS (`ssh Alan@zimaos.tanuki-chimaera.ts.net`) y pega:
+```bash
+curl -fsSL https://raw.githubusercontent.com/Vladalan/mya-faceswap/main/install.sh | sudo sh
+```
+Revisa la GPU, descarga el proyecto, obtiene o construye la imagen (10–20 min), crea las carpetas e instala la app. Para actualizar, corre el mismo comando otra vez.
+
+Instructivo completo: [`instalacion/INSTALACION_mya-faceswap.pdf`](instalacion/INSTALACION_mya-faceswap.pdf).
 
 ## Uso
 - Abre `http://zimaos.tanuki-chimaera.ts.net:8095`.
